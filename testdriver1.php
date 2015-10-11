@@ -3,17 +3,30 @@
 <body>
 
 <?php
-//error_reporting(E_ALL);
+
+define('EML_DIR', __DIR__ . DIRECTORY_SEPARATOR .'eml' . DIRECTORY_SEPARATOR);
+error_reporting(E_ALL);
+
 require_once("bounce_driver.class.php");
 $bouncehandler = new Bouncehandler();
+
+$url = parse_url($_SERVER['REQUEST_URI']);
+if (!empty($url['query'])) {
+    $scriptUrl = $url['path'] .'?'. $url['query'] .'&';
+} else {
+    $scriptUrl = $url['path'] .'?';
+}
+
+
+
 
 if(!empty($_GET['testall'])){
     $files = get_sorted_file_list('eml');
     if (is_array($files)) {
        echo "<P>File Tests:</P>\n";
        foreach($files as $file) {
-            echo "<a href=\"".$_SERVER['PHP_SELF']."?eml=".urlencode($file)."\">$file</a> ";
-            $bounce = file_get_contents("eml/".$file);
+            echo "<a href=\"".$scriptUrl."eml=".urlencode($file)."\">$file</a> ";
+            $bounce = file_get_contents(EML_DIR.$file);
             $multiArray = $bouncehandler->get_the_facts($bounce);
             if(   !empty($multiArray[0]['action'])
                && !empty($multiArray[0]['status'])
@@ -84,7 +97,7 @@ You can configure custom regular expressions to find any web beacons you may hav
 </P>
 <P>
 If the bounce is not well formed, it tries to extract some useful information anyway.  Currently Postfix and Exim are supported, partially.  You can edit the function <code>get_the_facts()</code> if you want to add a parser for your own busted MTA.  Please forward any useful & reuseable code to the keeper of this class.  <a href="http://cfortune.kics.bc.ca/">Chris Fortune</a></P>
-<?
+<?php
 
 // a perl regular expression to find a web beacon in the email body
 $bouncehandler->web_beacon_preg_1 = "/u=([0-9a-fA-F]{32})/";
@@ -94,10 +107,10 @@ $bouncehandler->web_beacon_preg_2 = "/m=(\d*)/";
 $bouncehandler->x_header_search_1 = "X-ctnlist-suid";
 //$bouncehandler->x_header_search_2 = "X-sumthin-sumpin";
 
-if($_GET['eml']){
+if (!empty($_GET['eml'])){
     echo "<HR><P><B>".$_GET['eml']."</B>  --  ";
     echo "<a href=\"testdriver1.php\">View a different bounce</a></P>";
-    $bounce = file_get_contents("eml/".$_GET['eml']);
+    $bounce = file_get_contents(EML_DIR.$_GET['eml']);
     echo "<P>Quick and dirty bounce handler:<BR>
         useage:
         <blockquote><code>
@@ -112,7 +125,6 @@ if($_GET['eml']){
 
     $multiArray = $bouncehandler->get_the_facts($bounce);
     echo "<TEXTAREA COLS=100 ROWS=".(count($multiArray)*8).">";
-//print_r($bouncehandler); exit;
 
     print_r($multiArray);
     echo "</TEXTAREA>";
@@ -121,7 +133,7 @@ if($_GET['eml']){
     list($head, $body) = preg_split("/\r\n\r\n/", $bounce, 2);
 }
 else{
-    print "<OL><LI><a href=\"".$_SERVER['PHP_SELF']."?testall=true\">Test All Sample Bounce E-mails</a>\n\n";
+    print "<OL><LI><a href=\"".$scriptUrl."testall=true\">Test All Sample Bounce E-mails</a>\n\n";
     print "<LI>Or, select a bounce email to view the parsed results:</OL>\n";
 
     $files = get_sorted_file_list('eml');
@@ -129,7 +141,7 @@ else{
         reset($files);
         echo "<P>Files:</P>\n";
         foreach($files as $file) {
-           echo "<a href=\"".$_SERVER['PHP_SELF']."?eml=".urlencode($file)."\">$file</a><br>\n";
+           echo "<a href=\"".$scriptUrl."eml=".urlencode($file)."\">$file</a><br>\n";
         }
     }
     exit;
@@ -279,16 +291,10 @@ print_r($mime_sections);
 echo "</TEXTAREA>";
 
 
-/*
-                $status_code = $bouncehandler->format_status_code($rpt_hash['per_recipient'][$i]['Status']);
-                $status_code_msg = $bouncehandler->fetch_status_messages($status_code['code']);
-                $status_code_remote_msg = $status_code['text'];
-                $diag_code = $bouncehandler->format_status_code($rpt_hash['per_recipient'][$i]['Diagnostic-code']['text']);
-                $diag_code_msg = $bouncehandler->fetch_status_messages($diag_code['code']);
-                $diag_code_remote_msg = $diag_code['text'];
-*/
-
 function get_sorted_file_list($d){
+
+    $d = __DIR__ . DIRECTORY_SEPARATOR . $d;
+
     $fs = array();
     if ($h = opendir($d)) {
         while (false !== ($f = readdir($h))) {
@@ -296,9 +302,8 @@ function get_sorted_file_list($d){
             $fs[] = $f;
         }
         closedir($h);
-        sort($fs, SORT_STRING);//
+        sort($fs, SORT_STRING);
     }
     return $fs;
 }
 
-?>
